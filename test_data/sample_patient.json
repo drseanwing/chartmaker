@@ -1,0 +1,55 @@
+{
+  "patient_name": "SULLIVAN, Terri Anne",
+  "urn": "RBWH 1234-56789",
+  "respiratory_rate": [
+    {"time": 0, "value": 16},
+    {"time": 2, "value": 18},
+    {"time": 4, "value": 17},
+    {"time": 6, "value": 16},
+    {"time": 8, "value": 15},
+    {"time": 10, "value": 16},
+    {"time": 12, "value": 18},
+    {"time": 14, "value": 17},
+    {"time": 16, "value": 16}
+  ],
+  "spo2": [
+    {"time": 0, "value": 97},
+    {"time": 2, "value": 98},
+    {"time": 4, "value": 97},
+    {"time": 6, "value": 96},
+    {"time": 8, "value": 97},
+    {"time": 10, "value": 98},
+    {"time": 12, "value": 98},
+    {"time": 14, "value": 97},
+    {"time": 16, "value": 98}
+  ],
+  "blood_pressure": [
+    {"time": 0, "systolic": 125, "diastolic": 78},
+    {"time": 2, "systolic": 120, "diastolic": 75},
+    {"time": 4, "systolic": 118, "diastolic": 72},
+    {"time": 6, "systolic": 122, "diastolic": 76},
+    {"time": 8, "systolic": 128, "diastolic": 80},
+    {"time": 10, "systolic": 125, "diastolic": 78},
+    {"time": 12, "systolic": 120, "diastolic": 74},
+    {"time": 14, "systolic": 118, "diastolic": 72},
+    {"time": 16, "systolic": 124, "diastolic": 76}
+  ],
+  "heart_rate": [
+    {"time": 0, "value": 75},
+    {"time": 2, "value": 78},
+    {"time": 4, "value": 72},
+    {"time": 6, "value": 70},
+    {"time": 8, "value": 68},
+    {"time": 10, "value": 72},
+    {"time": 12, "value": 75},
+    {"time": 14, "value": 74},
+    {"time": 16, "value": 72}
+  ],
+  "temperature": [
+    {"time": 0, "value": 36.8},
+    {"time": 4, "value": 36.9},
+    {"time": 8, "value": 37.0},
+    {"time": 12, "value": 36.8},
+    {"time": 16, "value": 36.7}
+  ]
+}

@@ -1,0 +1,191 @@
+{
+  "form_name": "QADDS_Adult_Demo",
+  "form_image": "QADDS_Adult_Page_2.jpg",
+  "image_dimensions": {
+    "width": 1413,
+    "height": 2000
+  },
+  "saved_at": "2025-01-20T00:00:00",
+  "description": "Demonstration preset for Q-ADDS Adult Page 2 (observation grid)",
+  "fields": [
+    {
+      "id": "patient_name",
+      "description": "Patient's full name in header",
+      "type": "text",
+      "mandatory": true,
+      "bounds": {
+        "x": 1150,
+        "y": 90,
+        "width": 200,
+        "height": 20
+      },
+      "style": {
+        "color": "#000000",
+        "font_size": 12,
+        "alignment": "left",
+        "bold": false
+      }
+    },
+    {
+      "id": "urn",
+      "description": "Patient URN",
+      "type": "text",
+      "mandatory": true,
+      "bounds": {
+        "x": 1150,
+        "y": 60,
+        "width": 200,
+        "height": 20
+      },
+      "style": {
+        "color": "#000000",
+        "font_size": 12,
+        "alignment": "left",
+        "bold": false
+      }
+    },
+    {
+      "id": "respiratory_rate",
+      "description": "Respiratory rate trace on Q-ADDS grid",
+      "type": "line_graph",
+      "mandatory": false,
+      "bounds": {
+        "x": 195,
+        "y": 180,
+        "width": 850,
+        "height": 120
+      },
+      "style": {
+        "color": "#000000",
+        "line_width": 1,
+        "dot_radius": 4,
+        "connect_points": true,
+        "show_dots": true
+      },
+      "x_axis": {
+        "min": 0,
+        "max": 24,
+        "increment": 1
+      },
+      "y_axis": {
+        "min": 8,
+        "max": 36,
+        "increment": 4
+      }
+    },
+    {
+      "id": "spo2",
+      "description": "SpO2 readings",
+      "type": "line_graph",
+      "mandatory": false,
+      "bounds": {
+        "x": 195,
+        "y": 300,
+        "width": 850,
+        "height": 80
+      },
+      "style": {
+        "color": "#0066CC",
+        "line_width": 1,
+        "dot_radius": 4,
+        "connect_points": true,
+        "show_dots": true
+      },
+      "x_axis": {
+        "min": 0,
+        "max": 24,
+        "increment": 1
+      },
+      "y_axis": {
+        "min": 84,
+        "max": 100,
+        "increment": 2
+      }
+    },
+    {
+      "id": "blood_pressure",
+      "description": "Blood pressure readings as ladder",
+      "type": "bp_ladder",
+      "mandatory": false,
+      "bounds": {
+        "x": 195,
+        "y": 480,
+        "width": 850,
+        "height": 280
+      },
+      "style": {
+        "color": "#CC0000",
+        "line_width": 2,
+        "marker_size": 4
+      },
+      "x_axis": {
+        "min": 0,
+        "max": 24,
+        "increment": 1
+      },
+      "y_axis": {
+        "min": 60,
+        "max": 200,
+        "increment": 10
+      }
+    },
+    {
+      "id": "heart_rate",
+      "description": "Heart rate trace",
+      "type": "line_graph",
+      "mandatory": false,
+      "bounds": {
+        "x": 195,
+        "y": 760,
+        "width": 850,
+        "height": 160
+      },
+      "style": {
+        "color": "#009900",
+        "line_width": 1,
+        "dot_radius": 4,
+        "connect_points": true,
+        "show_dots": true
+      },
+      "x_axis": {
+        "min": 0,
+        "max": 24,
+        "increment": 1
+      },
+      "y_axis": {
+        "min": 30,
+        "max": 140,
+        "increment": 10
+      }
+    },
+    {
+      "id": "temperature",
+      "description": "Temperature readings",
+      "type": "line_graph",
+      "mandatory": false,
+      "bounds": {
+        "x": 195,
+        "y": 920,
+        "width": 850,
+        "height": 100
+      },
+      "style": {
+        "color": "#FF6600",
+        "line_width": 1,
+        "dot_radius": 4,
+        "connect_points": true,
+        "show_dots": true
+      },
+      "x_axis": {
+        "min": 0,
+        "max": 24,
+        "increment": 1
+      },
+      "y_axis": {
+        "min": 34,
+        "max": 40,
+        "increment": 0.5
+      }
+    }
+  ]
+}

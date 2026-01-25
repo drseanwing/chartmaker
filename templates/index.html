@@ -1,0 +1,1552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medical Form Field Mapper</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --secondary: #64748b;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --border: #e2e8f0;
+            --text: #1e293b;
+            --text-muted: #64748b;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.5;
+        }
+        
+        /* Layout */
+        .app-container {
+            display: grid;
+            grid-template-columns: 300px 1fr 350px;
+            grid-template-rows: auto 1fr;
+            height: 100vh;
+            gap: 1px;
+            background: var(--border);
+        }
+        
+        .header {
+            grid-column: 1 / -1;
+            background: var(--card-bg);
+            padding: 0.75rem 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .header h1 {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+        
+        .header-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .sidebar-left,
+        .sidebar-right {
+            background: var(--card-bg);
+            overflow-y: auto;
+        }
+        
+        .main-canvas {
+            background: #374151;
+            overflow: auto;
+            position: relative;
+        }
+        
+        /* Panels */
+        .panel {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .panel-header {
+            font-weight: 600;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin-bottom: 0.75rem;
+        }
+        
+        /* Buttons */
+        .btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.375rem;
+        }
+        
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+        
+        .btn-secondary {
+            background: var(--secondary);
+            color: white;
+        }
+        
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+        
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+        
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text);
+        }
+        
+        .btn-outline:hover {
+            background: var(--bg);
+        }
+        
+        .btn-sm {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+        }
+        
+        .btn-block {
+            width: 100%;
+            justify-content: center;
+        }
+        
+        /* Form elements */
+        .form-group {
+            margin-bottom: 0.75rem;
+        }
+        
+        .form-label {
+            display: block;
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            margin-bottom: 0.25rem;
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid var(--border);
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            transition: border-color 0.15s;
+        }
+        
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+        }
+        
+        .form-row-4 {
+            grid-template-columns: repeat(4, 1fr);
+        }
+        
+        select.form-control {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.5rem center;
+            background-size: 1rem;
+            padding-right: 2rem;
+        }
+        
+        /* Field list */
+        .field-list {
+            list-style: none;
+        }
+        
+        .field-item {
+            padding: 0.5rem;
+            border: 1px solid var(--border);
+            border-radius: 0.375rem;
+            margin-bottom: 0.5rem;
+            cursor: pointer;
+            transition: all 0.15s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .field-item:hover {
+            border-color: var(--primary);
+        }
+        
+        .field-item.selected {
+            border-color: var(--primary);
+            background: rgba(37, 99, 235, 0.05);
+        }
+        
+        .field-item.mandatory {
+            border-left: 3px solid var(--danger);
+        }
+        
+        .field-item-name {
+            font-weight: 500;
+            font-size: 0.875rem;
+        }
+        
+        .field-item-type {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+        
+        .field-item-actions {
+            display: flex;
+            gap: 0.25rem;
+        }
+        
+        /* Canvas container */
+        .canvas-container {
+            position: relative;
+            display: inline-block;
+            margin: 1rem;
+        }
+        
+        .canvas-container img {
+            display: block;
+            max-width: none;
+        }
+        
+        .canvas-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;
+        }
+        
+        .field-rect {
+            position: absolute;
+            border: 2px solid var(--primary);
+            background: rgba(37, 99, 235, 0.1);
+            pointer-events: none;
+        }
+        
+        .field-rect.selected {
+            border-color: var(--success);
+            background: rgba(34, 197, 94, 0.15);
+        }
+        
+        .field-rect-label {
+            position: absolute;
+            top: -20px;
+            left: 0;
+            background: var(--primary);
+            color: white;
+            font-size: 0.625rem;
+            padding: 0.125rem 0.375rem;
+            border-radius: 0.25rem;
+            white-space: nowrap;
+        }
+        
+        .selection-rect {
+            position: absolute;
+            border: 2px dashed var(--warning);
+            background: rgba(245, 158, 11, 0.1);
+            pointer-events: none;
+        }
+        
+        /* Tabs */
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .tab {
+            padding: 0.5rem 1rem;
+            border: none;
+            background: none;
+            font-size: 0.875rem;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.15s;
+        }
+        
+        .tab:hover {
+            color: var(--primary);
+        }
+        
+        .tab.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+        
+        .tab-content {
+            display: none;
+            padding: 1rem;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        /* Axis config */
+        .axis-config {
+            background: var(--bg);
+            padding: 0.75rem;
+            border-radius: 0.375rem;
+            margin-bottom: 0.75rem;
+        }
+        
+        .axis-config-title {
+            font-weight: 600;
+            font-size: 0.75rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        /* Color picker */
+        .color-picker-wrapper {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+        
+        .color-picker {
+            width: 40px;
+            height: 32px;
+            border: 1px solid var(--border);
+            border-radius: 0.375rem;
+            cursor: pointer;
+        }
+        
+        /* Test data editor */
+        .test-data-editor {
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.75rem;
+            min-height: 200px;
+            resize: vertical;
+        }
+        
+        /* Preview modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            display: none;
+        }
+        
+        .modal-overlay.active {
+            display: flex;
+        }
+        
+        .modal {
+            background: var(--card-bg);
+            border-radius: 0.5rem;
+            max-width: 90vw;
+            max-height: 90vh;
+            overflow: auto;
+        }
+        
+        .modal-header {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-body {
+            padding: 1rem;
+        }
+        
+        .modal-body img {
+            max-width: 100%;
+            height: auto;
+        }
+        
+        /* Status messages */
+        .status {
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            margin-bottom: 1rem;
+        }
+        
+        .status-success {
+            background: rgba(34, 197, 94, 0.1);
+            color: var(--success);
+            border: 1px solid var(--success);
+        }
+        
+        .status-error {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger);
+            border: 1px solid var(--danger);
+        }
+        
+        /* Zoom controls */
+        .zoom-controls {
+            position: absolute;
+            bottom: 1rem;
+            right: 1rem;
+            display: flex;
+            gap: 0.25rem;
+            background: var(--card-bg);
+            padding: 0.25rem;
+            border-radius: 0.375rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+        
+        .zoom-level {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+            min-width: 50px;
+            text-align: center;
+        }
+        
+        /* Coordinate display */
+        .coord-display {
+            position: absolute;
+            top: 1rem;
+            left: 1rem;
+            background: rgba(0, 0, 0, 0.75);
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-family: monospace;
+            font-size: 0.75rem;
+        }
+        
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-muted);
+        }
+        
+        .empty-state-icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        /* Checkbox/toggle */
+        .checkbox-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .checkbox-wrapper input[type="checkbox"] {
+            width: 1rem;
+            height: 1rem;
+        }
+        
+        /* Help text */
+        .help-text {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+        }
+        
+        /* Loading state */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+        
+        .spinner {
+            width: 24px;
+            height: 24px;
+            border: 3px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <h1>📋 Medical Form Field Mapper</h1>
+            <div class="header-actions">
+                <button class="btn btn-outline" onclick="loadPreset()">📂 Load Preset</button>
+                <button class="btn btn-primary" onclick="savePreset()">💾 Save Preset</button>
+                <button class="btn btn-success" onclick="testRender()">▶️ Test Render</button>
+            </div>
+        </header>
+        
+        <!-- Left Sidebar - Form Selection & Fields -->
+        <aside class="sidebar-left">
+            <!-- Form Selection -->
+            <div class="panel">
+                <div class="panel-header">Form Template</div>
+                <div class="form-group">
+                    <select id="formSelect" class="form-control" onchange="loadFormImage()">
+                        <option value="">Select a form...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <input type="file" id="formUpload" accept="image/*" style="display: none" onchange="uploadForm()">
+                    <button class="btn btn-outline btn-block" onclick="document.getElementById('formUpload').click()">
+                        📤 Upload New Form
+                    </button>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Preset Name</label>
+                    <input type="text" id="presetName" class="form-control" placeholder="e.g., QADDS_Adult">
+                </div>
+            </div>
+            
+            <!-- Field List -->
+            <div class="panel">
+                <div class="panel-header">
+                    Fields
+                    <span style="float: right; font-weight: normal;">
+                        <span id="fieldCount">0</span> defined
+                    </span>
+                </div>
+                <button class="btn btn-primary btn-sm btn-block" onclick="addField()" style="margin-bottom: 0.75rem">
+                    + Add Field
+                </button>
+                <ul id="fieldList" class="field-list">
+                    <li class="empty-state">
+                        <div class="empty-state-icon">📝</div>
+                        <div>No fields defined yet</div>
+                        <div class="help-text">Click "Add Field" or draw on the form</div>
+                    </li>
+                </ul>
+            </div>
+        </aside>
+        
+        <!-- Main Canvas Area -->
+        <main class="main-canvas" id="mainCanvas">
+            <div class="coord-display" id="coordDisplay">X: 0, Y: 0</div>
+            <div class="canvas-container" id="canvasContainer">
+                <img id="formImage" src="" alt="Load a form to begin" style="display: none;">
+                <div class="canvas-overlay" id="canvasOverlay"></div>
+            </div>
+            <div class="zoom-controls">
+                <button class="btn btn-sm btn-outline" onclick="zoom(-0.1)">−</button>
+                <span class="zoom-level" id="zoomLevel">100%</span>
+                <button class="btn btn-sm btn-outline" onclick="zoom(0.1)">+</button>
+                <button class="btn btn-sm btn-outline" onclick="zoom(0)">Fit</button>
+            </div>
+        </main>
+        
+        <!-- Right Sidebar - Field Properties -->
+        <aside class="sidebar-right">
+            <div class="tabs">
+                <button class="tab active" data-tab="properties" onclick="switchTab('properties')">Properties</button>
+                <button class="tab" data-tab="test-data" onclick="switchTab('test-data')">Test Data</button>
+            </div>
+            
+            <!-- Properties Tab -->
+            <div id="tab-properties" class="tab-content active">
+                <div id="noFieldSelected" class="empty-state">
+                    <div class="empty-state-icon">👆</div>
+                    <div>Select a field to edit</div>
+                </div>
+                
+                <div id="fieldEditor" style="display: none;">
+                    <div class="form-group">
+                        <label class="form-label">Field ID</label>
+                        <input type="text" id="fieldId" class="form-control" placeholder="e.g., patient_name">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Description</label>
+                        <input type="text" id="fieldDescription" class="form-control" placeholder="Human-readable description">
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Type</label>
+                            <select id="fieldType" class="form-control" onchange="onFieldTypeChange()">
+                                <option value="text">Text</option>
+                                <option value="checkbox">Checkbox</option>
+                                <option value="line_graph">Line Graph</option>
+                                <option value="bar_graph">Bar Graph</option>
+                                <option value="dot_series">Dot Series</option>
+                                <option value="bp_ladder">BP Ladder</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">&nbsp;</label>
+                            <div class="checkbox-wrapper">
+                                <input type="checkbox" id="fieldMandatory">
+                                <label for="fieldMandatory">Mandatory</label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Bounds -->
+                    <div class="axis-config">
+                        <div class="axis-config-title">Bounds (pixels)</div>
+                        <div class="form-row form-row-4">
+                            <div class="form-group">
+                                <label class="form-label">X</label>
+                                <input type="number" id="boundsX" class="form-control" min="0">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Y</label>
+                                <input type="number" id="boundsY" class="form-control" min="0">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Width</label>
+                                <input type="number" id="boundsWidth" class="form-control" min="1">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Height</label>
+                                <input type="number" id="boundsHeight" class="form-control" min="1">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Style (for all types) -->
+                    <div class="form-group">
+                        <label class="form-label">Color</label>
+                        <div class="color-picker-wrapper">
+                            <input type="color" id="styleColor" class="color-picker" value="#000000">
+                            <input type="text" id="styleColorHex" class="form-control" value="#000000" style="flex: 1;">
+                        </div>
+                    </div>
+                    
+                    <!-- Text-specific options -->
+                    <div id="textOptions">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Font Size</label>
+                                <input type="number" id="styleFontSize" class="form-control" value="12" min="6" max="72">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Alignment</label>
+                                <select id="styleAlignment" class="form-control">
+                                    <option value="left">Left</option>
+                                    <option value="center">Center</option>
+                                    <option value="right">Right</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <div class="checkbox-wrapper">
+                                <input type="checkbox" id="styleBold">
+                                <label for="styleBold">Bold</label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Checkbox-specific options -->
+                    <div id="checkboxOptions" style="display: none;">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Mark Type</label>
+                                <select id="checkboxMarkType" class="form-control">
+                                    <option value="x">X Mark</option>
+                                    <option value="check">Checkmark</option>
+                                    <option value="fill">Fill</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Size</label>
+                                <input type="number" id="checkboxSize" class="form-control" value="10" min="4" max="30">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Graph-specific options -->
+                    <div id="graphOptions" style="display: none;">
+                        <!-- X Axis -->
+                        <div class="axis-config">
+                            <div class="axis-config-title">X Axis (Time)</div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">Min</label>
+                                    <input type="number" id="xAxisMin" class="form-control" value="0">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Max</label>
+                                    <input type="number" id="xAxisMax" class="form-control" value="120">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Increment</label>
+                                <input type="number" id="xAxisIncrement" class="form-control" value="5">
+                                <div class="help-text">Time unit (e.g., 5 = 5 minutes per grid line)</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Y Axis -->
+                        <div class="axis-config">
+                            <div class="axis-config-title">Y Axis (Value)</div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">Min</label>
+                                    <input type="number" id="yAxisMin" class="form-control" value="0">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Max</label>
+                                    <input type="number" id="yAxisMax" class="form-control" value="200">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Increment</label>
+                                <input type="number" id="yAxisIncrement" class="form-control" value="20">
+                            </div>
+                        </div>
+                        
+                        <!-- Line options -->
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Line Width</label>
+                                <input type="number" id="lineWidth" class="form-control" value="2" min="1" max="5">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Dot Radius</label>
+                                <input type="number" id="dotRadius" class="form-control" value="3" min="1" max="10">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <div class="checkbox-wrapper">
+                                <input type="checkbox" id="connectPoints" checked>
+                                <label for="connectPoints">Connect points with lines</label>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <div class="checkbox-wrapper">
+                                <input type="checkbox" id="showDots" checked>
+                                <label for="showDots">Show dots at data points</label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <hr style="margin: 1rem 0; border: none; border-top: 1px solid var(--border);">
+                    
+                    <button class="btn btn-danger btn-sm" onclick="deleteField()">🗑️ Delete Field</button>
+                </div>
+            </div>
+            
+            <!-- Test Data Tab -->
+            <div id="tab-test-data" class="tab-content">
+                <div class="form-group">
+                    <label class="form-label">Test Data (JSON)</label>
+                    <textarea id="testDataEditor" class="form-control test-data-editor" placeholder='{
+  "patient_name": "John Smith",
+  "heart_rate": [
+    {"time": 0, "value": 75},
+    {"time": 5, "value": 80}
+  ]
+}'></textarea>
+                    <div class="help-text">Field IDs should match the fields defined</div>
+                </div>
+                <div class="form-group">
+                    <button class="btn btn-primary btn-block" onclick="generateSampleTestData()">
+                        Generate Sample Data
+                    </button>
+                </div>
+                <div id="testDataStatus"></div>
+            </div>
+        </aside>
+    </div>
+    
+    <!-- Preview Modal -->
+    <div class="modal-overlay" id="previewModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Test Render Preview</h3>
+                <button class="btn btn-outline btn-sm" onclick="closePreview()">✕ Close</button>
+            </div>
+            <div class="modal-body">
+                <img id="previewImage" src="" alt="Preview">
+            </div>
+        </div>
+    </div>
+    
+    <!-- Preset Load Modal -->
+    <div class="modal-overlay" id="loadPresetModal">
+        <div class="modal" style="width: 400px;">
+            <div class="modal-header">
+                <h3>Load Preset</h3>
+                <button class="btn btn-outline btn-sm" onclick="closeLoadPresetModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <div id="presetList"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // =================================================================
+        // STATE
+        // =================================================================
+        
+        const state = {
+            formImage: null,
+            formFilename: '',
+            imageWidth: 0,
+            imageHeight: 0,
+            zoom: 1,
+            fields: [],
+            selectedFieldIndex: -1,
+            isDrawing: false,
+            drawStart: null
+        };
+        
+        // =================================================================
+        // INITIALIZATION
+        // =================================================================
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            loadFormList();
+            setupCanvasEvents();
+            setupColorPicker();
+            setupFieldInputListeners();
+        });
+        
+        async function loadFormList() {
+            try {
+                const response = await fetch('/api/forms');
+                const data = await response.json();
+                const select = document.getElementById('formSelect');
+                
+                data.forms.forEach(form => {
+                    const option = document.createElement('option');
+                    option.value = form.filename;
+                    option.textContent = `${form.filename} (${form.width}×${form.height})`;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Failed to load forms:', error);
+            }
+        }
+        
+        // =================================================================
+        // FORM IMAGE HANDLING
+        // =================================================================
+        
+        function loadFormImage() {
+            const select = document.getElementById('formSelect');
+            const filename = select.value;
+            
+            if (!filename) return;
+            
+            const img = document.getElementById('formImage');
+            img.onload = () => {
+                state.imageWidth = img.naturalWidth;
+                state.imageHeight = img.naturalHeight;
+                state.formFilename = filename;
+                img.style.display = 'block';
+                updateZoom();
+                renderFieldOverlays();
+            };
+            img.src = `/form_images/${filename}`;
+        }
+        
+        async function uploadForm() {
+            const input = document.getElementById('formUpload');
+            const file = input.files[0];
+            
+            if (!file) return;
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            try {
+                const response = await fetch('/api/upload-form', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Add to select and load
+                    const select = document.getElementById('formSelect');
+                    const option = document.createElement('option');
+                    option.value = data.filename;
+                    option.textContent = `${data.filename} (${data.width}×${data.height})`;
+                    select.appendChild(option);
+                    select.value = data.filename;
+                    loadFormImage();
+                }
+            } catch (error) {
+                console.error('Upload failed:', error);
+                alert('Failed to upload form image');
+            }
+        }
+        
+        // =================================================================
+        // ZOOM
+        // =================================================================
+        
+        function zoom(delta) {
+            if (delta === 0) {
+                // Fit to container
+                const container = document.getElementById('mainCanvas');
+                const scaleX = (container.clientWidth - 50) / state.imageWidth;
+                const scaleY = (container.clientHeight - 50) / state.imageHeight;
+                state.zoom = Math.min(scaleX, scaleY, 1);
+            } else {
+                state.zoom = Math.max(0.1, Math.min(3, state.zoom + delta));
+            }
+            updateZoom();
+        }
+        
+        function updateZoom() {
+            const img = document.getElementById('formImage');
+            const container = document.getElementById('canvasContainer');
+            const overlay = document.getElementById('canvasOverlay');
+            
+            const width = state.imageWidth * state.zoom;
+            const height = state.imageHeight * state.zoom;
+            
+            img.style.width = `${width}px`;
+            img.style.height = `${height}px`;
+            container.style.width = `${width}px`;
+            container.style.height = `${height}px`;
+            
+            document.getElementById('zoomLevel').textContent = `${Math.round(state.zoom * 100)}%`;
+            
+            renderFieldOverlays();
+        }
+        
+        // =================================================================
+        // CANVAS EVENTS (Drawing fields)
+        // =================================================================
+        
+        function setupCanvasEvents() {
+            const overlay = document.getElementById('canvasOverlay');
+            
+            overlay.addEventListener('mousedown', (e) => {
+                if (e.button !== 0) return;
+                
+                const rect = overlay.getBoundingClientRect();
+                state.isDrawing = true;
+                state.drawStart = {
+                    x: (e.clientX - rect.left) / state.zoom,
+                    y: (e.clientY - rect.top) / state.zoom
+                };
+            });
+            
+            overlay.addEventListener('mousemove', (e) => {
+                const rect = overlay.getBoundingClientRect();
+                const x = Math.round((e.clientX - rect.left) / state.zoom);
+                const y = Math.round((e.clientY - rect.top) / state.zoom);
+                
+                document.getElementById('coordDisplay').textContent = `X: ${x}, Y: ${y}`;
+                
+                if (state.isDrawing) {
+                    renderSelectionRect(x, y);
+                }
+            });
+            
+            overlay.addEventListener('mouseup', (e) => {
+                if (!state.isDrawing) return;
+                
+                const rect = overlay.getBoundingClientRect();
+                const endX = (e.clientX - rect.left) / state.zoom;
+                const endY = (e.clientY - rect.top) / state.zoom;
+                
+                const bounds = {
+                    x: Math.round(Math.min(state.drawStart.x, endX)),
+                    y: Math.round(Math.min(state.drawStart.y, endY)),
+                    width: Math.round(Math.abs(endX - state.drawStart.x)),
+                    height: Math.round(Math.abs(endY - state.drawStart.y))
+                };
+                
+                state.isDrawing = false;
+                state.drawStart = null;
+                clearSelectionRect();
+                
+                // Only create field if area is meaningful
+                if (bounds.width > 5 && bounds.height > 5) {
+                    addFieldWithBounds(bounds);
+                }
+            });
+            
+            overlay.addEventListener('mouseleave', () => {
+                if (state.isDrawing) {
+                    state.isDrawing = false;
+                    state.drawStart = null;
+                    clearSelectionRect();
+                }
+            });
+        }
+        
+        function renderSelectionRect(currentX, currentY) {
+            let rect = document.querySelector('.selection-rect');
+            if (!rect) {
+                rect = document.createElement('div');
+                rect.className = 'selection-rect';
+                document.getElementById('canvasOverlay').appendChild(rect);
+            }
+            
+            const x = Math.min(state.drawStart.x, currentX) * state.zoom;
+            const y = Math.min(state.drawStart.y, currentY) * state.zoom;
+            const width = Math.abs(currentX - state.drawStart.x) * state.zoom;
+            const height = Math.abs(currentY - state.drawStart.y) * state.zoom;
+            
+            rect.style.left = `${x}px`;
+            rect.style.top = `${y}px`;
+            rect.style.width = `${width}px`;
+            rect.style.height = `${height}px`;
+        }
+        
+        function clearSelectionRect() {
+            const rect = document.querySelector('.selection-rect');
+            if (rect) rect.remove();
+        }
+        
+        // =================================================================
+        // FIELD MANAGEMENT
+        // =================================================================
+        
+        function addField() {
+            addFieldWithBounds({ x: 50, y: 50, width: 100, height: 20 });
+        }
+        
+        function addFieldWithBounds(bounds) {
+            const fieldNum = state.fields.length + 1;
+            const field = {
+                id: `field_${fieldNum}`,
+                description: '',
+                type: 'text',
+                mandatory: false,
+                bounds: bounds,
+                style: {
+                    color: '#000000',
+                    font_size: 12,
+                    alignment: 'left',
+                    bold: false
+                },
+                x_axis: { min: 0, max: 120, increment: 5 },
+                y_axis: { min: 0, max: 200, increment: 20 }
+            };
+            
+            state.fields.push(field);
+            state.selectedFieldIndex = state.fields.length - 1;
+            
+            renderFieldList();
+            renderFieldOverlays();
+            showFieldEditor();
+            populateFieldEditor(field);
+        }
+        
+        function selectField(index) {
+            state.selectedFieldIndex = index;
+            renderFieldList();
+            renderFieldOverlays();
+            
+            if (index >= 0 && index < state.fields.length) {
+                showFieldEditor();
+                populateFieldEditor(state.fields[index]);
+            } else {
+                hideFieldEditor();
+            }
+        }
+        
+        function deleteField() {
+            if (state.selectedFieldIndex < 0) return;
+            
+            if (confirm('Delete this field?')) {
+                state.fields.splice(state.selectedFieldIndex, 1);
+                state.selectedFieldIndex = -1;
+                renderFieldList();
+                renderFieldOverlays();
+                hideFieldEditor();
+            }
+        }
+        
+        function renderFieldList() {
+            const list = document.getElementById('fieldList');
+            document.getElementById('fieldCount').textContent = state.fields.length;
+            
+            if (state.fields.length === 0) {
+                list.innerHTML = `
+                    <li class="empty-state">
+                        <div class="empty-state-icon">📝</div>
+                        <div>No fields defined yet</div>
+                        <div class="help-text">Click "Add Field" or draw on the form</div>
+                    </li>
+                `;
+                return;
+            }
+            
+            list.innerHTML = state.fields.map((field, index) => `
+                <li class="field-item ${field.mandatory ? 'mandatory' : ''} ${index === state.selectedFieldIndex ? 'selected' : ''}"
+                    onclick="selectField(${index})">
+                    <div>
+                        <div class="field-item-name">${field.id}</div>
+                        <div class="field-item-type">${field.type}${field.mandatory ? ' • Required' : ''}</div>
+                    </div>
+                    <div class="field-item-actions">
+                        <button class="btn btn-sm btn-outline" onclick="event.stopPropagation(); duplicateField(${index})">📋</button>
+                    </div>
+                </li>
+            `).join('');
+        }
+        
+        function duplicateField(index) {
+            const original = state.fields[index];
+            const copy = JSON.parse(JSON.stringify(original));
+            copy.id = `${original.id}_copy`;
+            copy.bounds.x += 20;
+            copy.bounds.y += 20;
+            state.fields.push(copy);
+            state.selectedFieldIndex = state.fields.length - 1;
+            renderFieldList();
+            renderFieldOverlays();
+            showFieldEditor();
+            populateFieldEditor(copy);
+        }
+        
+        function renderFieldOverlays() {
+            const overlay = document.getElementById('canvasOverlay');
+            
+            // Remove existing field rects (but keep selection rect)
+            overlay.querySelectorAll('.field-rect').forEach(el => el.remove());
+            
+            state.fields.forEach((field, index) => {
+                const rect = document.createElement('div');
+                rect.className = `field-rect ${index === state.selectedFieldIndex ? 'selected' : ''}`;
+                rect.style.left = `${field.bounds.x * state.zoom}px`;
+                rect.style.top = `${field.bounds.y * state.zoom}px`;
+                rect.style.width = `${field.bounds.width * state.zoom}px`;
+                rect.style.height = `${field.bounds.height * state.zoom}px`;
+                rect.style.borderColor = field.style.color;
+                
+                const label = document.createElement('div');
+                label.className = 'field-rect-label';
+                label.textContent = field.id;
+                label.style.backgroundColor = field.style.color;
+                rect.appendChild(label);
+                
+                rect.addEventListener('click', () => selectField(index));
+                
+                overlay.appendChild(rect);
+            });
+        }
+        
+        // =================================================================
+        // FIELD EDITOR
+        // =================================================================
+        
+        function showFieldEditor() {
+            document.getElementById('noFieldSelected').style.display = 'none';
+            document.getElementById('fieldEditor').style.display = 'block';
+        }
+        
+        function hideFieldEditor() {
+            document.getElementById('noFieldSelected').style.display = 'block';
+            document.getElementById('fieldEditor').style.display = 'none';
+        }
+        
+        function populateFieldEditor(field) {
+            document.getElementById('fieldId').value = field.id;
+            document.getElementById('fieldDescription').value = field.description || '';
+            document.getElementById('fieldType').value = field.type;
+            document.getElementById('fieldMandatory').checked = field.mandatory;
+            
+            document.getElementById('boundsX').value = field.bounds.x;
+            document.getElementById('boundsY').value = field.bounds.y;
+            document.getElementById('boundsWidth').value = field.bounds.width;
+            document.getElementById('boundsHeight').value = field.bounds.height;
+            
+            document.getElementById('styleColor').value = field.style.color;
+            document.getElementById('styleColorHex').value = field.style.color;
+            document.getElementById('styleFontSize').value = field.style.font_size || 12;
+            document.getElementById('styleAlignment').value = field.style.alignment || 'left';
+            document.getElementById('styleBold').checked = field.style.bold || false;
+            
+            // Checkbox options
+            document.getElementById('checkboxMarkType').value = field.style.mark_type || 'x';
+            document.getElementById('checkboxSize').value = field.style.size || 10;
+            
+            // Graph options
+            document.getElementById('xAxisMin').value = field.x_axis?.min ?? 0;
+            document.getElementById('xAxisMax').value = field.x_axis?.max ?? 120;
+            document.getElementById('xAxisIncrement').value = field.x_axis?.increment ?? 5;
+            document.getElementById('yAxisMin').value = field.y_axis?.min ?? 0;
+            document.getElementById('yAxisMax').value = field.y_axis?.max ?? 200;
+            document.getElementById('yAxisIncrement').value = field.y_axis?.increment ?? 20;
+            document.getElementById('lineWidth').value = field.style.line_width || 2;
+            document.getElementById('dotRadius').value = field.style.dot_radius || 3;
+            document.getElementById('connectPoints').checked = field.style.connect_points !== false;
+            document.getElementById('showDots').checked = field.style.show_dots !== false;
+            
+            onFieldTypeChange();
+        }
+        
+        function onFieldTypeChange() {
+            const type = document.getElementById('fieldType').value;
+            
+            document.getElementById('textOptions').style.display = type === 'text' ? 'block' : 'none';
+            document.getElementById('checkboxOptions').style.display = type === 'checkbox' ? 'block' : 'none';
+            document.getElementById('graphOptions').style.display = 
+                ['line_graph', 'bar_graph', 'dot_series', 'bp_ladder'].includes(type) ? 'block' : 'none';
+            
+            updateCurrentField();
+        }
+        
+        function setupColorPicker() {
+            const picker = document.getElementById('styleColor');
+            const hex = document.getElementById('styleColorHex');
+            
+            picker.addEventListener('input', () => {
+                hex.value = picker.value;
+                updateCurrentField();
+            });
+            
+            hex.addEventListener('input', () => {
+                if (/^#[0-9A-Fa-f]{6}$/.test(hex.value)) {
+                    picker.value = hex.value;
+                    updateCurrentField();
+                }
+            });
+        }
+        
+        function setupFieldInputListeners() {
+            const inputs = [
+                'fieldId', 'fieldDescription', 'fieldType', 'fieldMandatory',
+                'boundsX', 'boundsY', 'boundsWidth', 'boundsHeight',
+                'styleFontSize', 'styleAlignment', 'styleBold',
+                'checkboxMarkType', 'checkboxSize',
+                'xAxisMin', 'xAxisMax', 'xAxisIncrement',
+                'yAxisMin', 'yAxisMax', 'yAxisIncrement',
+                'lineWidth', 'dotRadius', 'connectPoints', 'showDots'
+            ];
+            
+            inputs.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.addEventListener('input', updateCurrentField);
+                    el.addEventListener('change', updateCurrentField);
+                }
+            });
+        }
+        
+        function updateCurrentField() {
+            if (state.selectedFieldIndex < 0) return;
+            
+            const field = state.fields[state.selectedFieldIndex];
+            
+            field.id = document.getElementById('fieldId').value;
+            field.description = document.getElementById('fieldDescription').value;
+            field.type = document.getElementById('fieldType').value;
+            field.mandatory = document.getElementById('fieldMandatory').checked;
+            
+            field.bounds = {
+                x: parseInt(document.getElementById('boundsX').value) || 0,
+                y: parseInt(document.getElementById('boundsY').value) || 0,
+                width: parseInt(document.getElementById('boundsWidth').value) || 100,
+                height: parseInt(document.getElementById('boundsHeight').value) || 20
+            };
+            
+            field.style = {
+                color: document.getElementById('styleColor').value,
+                font_size: parseInt(document.getElementById('styleFontSize').value) || 12,
+                alignment: document.getElementById('styleAlignment').value,
+                bold: document.getElementById('styleBold').checked,
+                mark_type: document.getElementById('checkboxMarkType').value,
+                size: parseInt(document.getElementById('checkboxSize').value) || 10,
+                line_width: parseInt(document.getElementById('lineWidth').value) || 2,
+                dot_radius: parseInt(document.getElementById('dotRadius').value) || 3,
+                connect_points: document.getElementById('connectPoints').checked,
+                show_dots: document.getElementById('showDots').checked
+            };
+            
+            field.x_axis = {
+                min: parseFloat(document.getElementById('xAxisMin').value) || 0,
+                max: parseFloat(document.getElementById('xAxisMax').value) || 120,
+                increment: parseFloat(document.getElementById('xAxisIncrement').value) || 5
+            };
+            
+            field.y_axis = {
+                min: parseFloat(document.getElementById('yAxisMin').value) || 0,
+                max: parseFloat(document.getElementById('yAxisMax').value) || 200,
+                increment: parseFloat(document.getElementById('yAxisIncrement').value) || 20
+            };
+            
+            renderFieldList();
+            renderFieldOverlays();
+        }
+        
+        // =================================================================
+        // TABS
+        // =================================================================
+        
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            
+            document.querySelector(`.tab[data-tab="${tabId}"]`).classList.add('active');
+            document.getElementById(`tab-${tabId}`).classList.add('active');
+        }
+        
+        // =================================================================
+        // TEST DATA
+        // =================================================================
+        
+        function generateSampleTestData() {
+            const testData = {};
+            
+            state.fields.forEach(field => {
+                switch (field.type) {
+                    case 'text':
+                        testData[field.id] = `Sample ${field.id}`;
+                        break;
+                    case 'checkbox':
+                        testData[field.id] = true;
+                        break;
+                    case 'line_graph':
+                    case 'bar_graph':
+                    case 'dot_series':
+                        testData[field.id] = [];
+                        const xMin = field.x_axis?.min ?? 0;
+                        const xMax = field.x_axis?.max ?? 120;
+                        const xInc = field.x_axis?.increment ?? 5;
+                        const yMin = field.y_axis?.min ?? 0;
+                        const yMax = field.y_axis?.max ?? 200;
+                        
+                        for (let t = xMin; t <= xMax; t += xInc) {
+                            const value = yMin + Math.random() * (yMax - yMin) * 0.5 + (yMax - yMin) * 0.25;
+                            testData[field.id].push({
+                                time: t,
+                                value: Math.round(value)
+                            });
+                        }
+                        break;
+                    case 'bp_ladder':
+                        testData[field.id] = [];
+                        const bpXMin = field.x_axis?.min ?? 0;
+                        const bpXMax = field.x_axis?.max ?? 120;
+                        const bpXInc = field.x_axis?.increment ?? 5;
+                        
+                        for (let t = bpXMin; t <= bpXMax; t += bpXInc) {
+                            testData[field.id].push({
+                                time: t,
+                                systolic: Math.round(110 + Math.random() * 30),
+                                diastolic: Math.round(65 + Math.random() * 20)
+                            });
+                        }
+                        break;
+                }
+            });
+            
+            document.getElementById('testDataEditor').value = JSON.stringify(testData, null, 2);
+        }
+        
+        // =================================================================
+        // SAVE / LOAD PRESETS
+        // =================================================================
+        
+        async function savePreset() {
+            const name = document.getElementById('presetName').value.trim();
+            if (!name) {
+                alert('Please enter a preset name');
+                return;
+            }
+            
+            const preset = {
+                filename: `${name}.json`,
+                form_name: name,
+                form_image: state.formFilename,
+                image_dimensions: {
+                    width: state.imageWidth,
+                    height: state.imageHeight
+                },
+                fields: state.fields
+            };
+            
+            try {
+                const response = await fetch('/api/preset', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(preset)
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert(`Preset saved: ${data.filename}`);
+                } else {
+                    alert('Failed to save preset');
+                }
+            } catch (error) {
+                console.error('Save failed:', error);
+                alert('Failed to save preset');
+            }
+        }
+        
+        async function loadPreset() {
+            try {
+                const response = await fetch('/api/presets');
+                const data = await response.json();
+                
+                const list = document.getElementById('presetList');
+                
+                if (data.presets.length === 0) {
+                    list.innerHTML = '<div class="empty-state">No presets saved yet</div>';
+                } else {
+                    list.innerHTML = data.presets.map(p => `
+                        <div class="field-item" onclick="doLoadPreset('${p.filename}')">
+                            <div>
+                                <div class="field-item-name">${p.form_name}</div>
+                                <div class="field-item-type">${p.field_count} fields • ${p.modified}</div>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+                
+                document.getElementById('loadPresetModal').classList.add('active');
+            } catch (error) {
+                console.error('Failed to load presets:', error);
+            }
+        }
+        
+        async function doLoadPreset(filename) {
+            try {
+                const response = await fetch(`/api/preset/${filename}`);
+                const preset = await response.json();
+                
+                // Set form image
+                if (preset.form_image) {
+                    document.getElementById('formSelect').value = preset.form_image;
+                    loadFormImage();
+                }
+                
+                // Set name
+                document.getElementById('presetName').value = preset.form_name || '';
+                
+                // Load fields
+                state.fields = preset.fields || [];
+                state.selectedFieldIndex = -1;
+                
+                renderFieldList();
+                hideFieldEditor();
+                closeLoadPresetModal();
+                
+                // Wait for image to load before rendering overlays
+                setTimeout(renderFieldOverlays, 100);
+                
+            } catch (error) {
+                console.error('Failed to load preset:', error);
+                alert('Failed to load preset');
+            }
+        }
+        
+        function closeLoadPresetModal() {
+            document.getElementById('loadPresetModal').classList.remove('active');
+        }
+        
+        // =================================================================
+        // TEST RENDER
+        // =================================================================
+        
+        async function testRender() {
+            if (!state.formFilename) {
+                alert('Please load a form image first');
+                return;
+            }
+            
+            let testData = {};
+            try {
+                const testDataStr = document.getElementById('testDataEditor').value.trim();
+                if (testDataStr) {
+                    testData = JSON.parse(testDataStr);
+                }
+            } catch (e) {
+                alert('Invalid test data JSON: ' + e.message);
+                return;
+            }
+            
+            const preset = {
+                form_name: document.getElementById('presetName').value,
+                fields: state.fields
+            };
+            
+            try {
+                const response = await fetch('/api/test-render', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        preset: preset,
+                        test_data: testData,
+                        form_image: state.formFilename
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.image) {
+                    document.getElementById('previewImage').src = data.image;
+                    document.getElementById('previewModal').classList.add('active');
+                } else {
+                    alert('Render failed: ' + (data.error || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Render failed:', error);
+                alert('Failed to generate test render');
+            }
+        }
+        
+        function closePreview() {
+            document.getElementById('previewModal').classList.remove('active');
+        }
+        
+        // Close modals on escape
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closePreview();
+                closeLoadPresetModal();
+            }
+        });
+    </script>
+</body>
+</html>
