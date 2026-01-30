@@ -1,0 +1,16 @@
+services:
+  chartmaker:
+    build: .
+    container_name: chartmaker
+    ports:
+      - "9110:5000"
+    volumes:
+      - form_images:/app/form_images
+      - output:/app/output
+      - presets:/app/presets
+    restart: unless-stopped
+
+volumes:
+  form_images:
+  output:
+  presets:
