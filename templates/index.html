@@ -265,6 +265,7 @@
             border: 2px solid var(--primary);
             background: rgba(37, 99, 235, 0.1);
             pointer-events: none;
+            transition: box-shadow 0.1s;
         }
         
         .field-rect.selected {
@@ -612,6 +613,7 @@
                             <label class="form-label">Type</label>
                             <select id="fieldType" class="form-control" onchange="onFieldTypeChange()">
                                 <option value="text">Text</option>
+                                <option value="multiline_text">Multiline Text</option>
                                 <option value="checkbox">Checkbox</option>
                                 <option value="line_graph">Line Graph</option>
                                 <option value="bar_graph">Bar Graph</option>
@@ -660,8 +662,17 @@
                         </div>
                     </div>
                     
-                    <!-- Text-specific options -->
+                    <!-- Text-specific options (also used by multiline_text) -->
                     <div id="textOptions">
+                        <div class="form-group">
+                            <label class="form-label">Font Family</label>
+                            <select id="styleFontFamily" class="form-control">
+                                <option value="default">Default (Sans-Serif)</option>
+                                <option value="handwriting-casual">Handwriting - Casual (Caveat)</option>
+                                <option value="handwriting-elegant">Handwriting - Elegant (Dancing Script)</option>
+                                <option value="handwriting-print">Handwriting - Print (Patrick Hand)</option>
+                            </select>
+                        </div>
                         <div class="form-row">
                             <div class="form-group">
                                 <label class="form-label">Font Size</label>
@@ -683,22 +694,26 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Multiline text options (text_rows) -->
+                    <div id="multilineOptions" style="display: none;">
+                        <div class="form-group">
+                            <label class="form-label">Text Rows</label>
+                            <input type="number" id="textRows" class="form-control" value="3" min="1" max="20">
+                            <div class="help-text">Number of text rows. Font size auto-calculated from row height.</div>
+                        </div>
+                    </div>
                     
                     <!-- Checkbox-specific options -->
                     <div id="checkboxOptions" style="display: none;">
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label class="form-label">Mark Type</label>
-                                <select id="checkboxMarkType" class="form-control">
-                                    <option value="x">X Mark</option>
-                                    <option value="check">Checkmark</option>
-                                    <option value="fill">Fill</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Size</label>
-                                <input type="number" id="checkboxSize" class="form-control" value="10" min="4" max="30">
-                            </div>
+                        <div class="form-group">
+                            <label class="form-label">Mark Type</label>
+                            <select id="checkboxMarkType" class="form-control">
+                                <option value="x">X Mark</option>
+                                <option value="check">Checkmark</option>
+                                <option value="fill">Fill</option>
+                            </select>
+                            <div class="help-text">Mark fills the drawn field bounds (width x height).</div>
                         </div>
                     </div>
                     
@@ -768,9 +783,35 @@
                         </div>
                     </div>
                     
+                    <!-- Padding (all field types) -->
+                    <div class="axis-config" style="margin-top: 0.75rem;">
+                        <div class="axis-config-title">Padding (pixels)</div>
+                        <div class="form-row form-row-4">
+                            <div class="form-group">
+                                <label class="form-label">Top</label>
+                                <input type="number" id="paddingTop" class="form-control" value="0" min="0">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Right</label>
+                                <input type="number" id="paddingRight" class="form-control" value="0" min="0">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Bottom</label>
+                                <input type="number" id="paddingBottom" class="form-control" value="0" min="0">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Left</label>
+                                <input type="number" id="paddingLeft" class="form-control" value="0" min="0">
+                            </div>
+                        </div>
+                    </div>
+
                     <hr style="margin: 1rem 0; border: none; border-top: 1px solid var(--border);">
-                    
-                    <button class="btn btn-danger btn-sm" onclick="deleteField()">🗑️ Delete Field</button>
+
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="btn btn-outline btn-sm" onclick="redrawField()" title="Redraw bounds on canvas keeping field settings">🔄 Redraw</button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteField()">🗑️ Delete Field</button>
+                    </div>
                 </div>
             </div>
             
@@ -837,7 +878,12 @@
             fields: [],
             selectedFieldIndex: -1,
             isDrawing: false,
-            drawStart: null
+            drawStart: null,
+            redrawingFieldIndex: -1,
+            isDragging: false,
+            dragFieldIndex: -1,
+            dragStart: null,
+            dragOrigBounds: null
         };
         
         // =================================================================
@@ -875,9 +921,19 @@
         function loadFormImage() {
             const select = document.getElementById('formSelect');
             const filename = select.value;
-            
+
             if (!filename) return;
-            
+
+            // Prompt to clear existing fields when switching images
+            if (state.fields.length > 0 && state.formFilename && state.formFilename !== filename) {
+                if (confirm(`You have ${state.fields.length} field(s) defined. Clear them for the new form image?`)) {
+                    state.fields = [];
+                    state.selectedFieldIndex = -1;
+                    renderFieldList();
+                    hideFieldEditor();
+                }
+            }
+
             const img = document.getElementById('formImage');
             img.onload = () => {
                 state.imageWidth = img.naturalWidth;
@@ -963,61 +1019,129 @@
         
         function setupCanvasEvents() {
             const overlay = document.getElementById('canvasOverlay');
-            
+
             overlay.addEventListener('mousedown', (e) => {
                 if (e.button !== 0) return;
-                
+
                 const rect = overlay.getBoundingClientRect();
+                const imgX = Math.round((e.clientX - rect.left) / state.zoom);
+                const imgY = Math.round((e.clientY - rect.top) / state.zoom);
+
+                // Check if clicking on an existing field (for dragging)
+                if (state.redrawingFieldIndex < 0) {
+                    const hitIndex = hitTestField(imgX, imgY);
+                    if (hitIndex >= 0 && !e.shiftKey) {
+                        // Start dragging the existing field
+                        state.isDragging = true;
+                        state.dragFieldIndex = hitIndex;
+                        state.dragStart = { x: imgX, y: imgY };
+                        state.dragOrigBounds = { ...state.fields[hitIndex].bounds };
+                        selectField(hitIndex);
+                        e.preventDefault();
+                        return;
+                    }
+                }
+
+                // Normal drawing mode
                 state.isDrawing = true;
-                state.drawStart = {
-                    x: (e.clientX - rect.left) / state.zoom,
-                    y: (e.clientY - rect.top) / state.zoom
-                };
+                state.drawStart = { x: imgX, y: imgY };
             });
-            
+
             overlay.addEventListener('mousemove', (e) => {
                 const rect = overlay.getBoundingClientRect();
                 const x = Math.round((e.clientX - rect.left) / state.zoom);
                 const y = Math.round((e.clientY - rect.top) / state.zoom);
-                
+
                 document.getElementById('coordDisplay').textContent = `X: ${x}, Y: ${y}`;
-                
-                if (state.isDrawing) {
+
+                if (state.isDragging && state.dragFieldIndex >= 0) {
+                    // Move the field
+                    const dx = x - state.dragStart.x;
+                    const dy = y - state.dragStart.y;
+                    const field = state.fields[state.dragFieldIndex];
+                    field.bounds.x = Math.max(0, Math.round(state.dragOrigBounds.x + dx));
+                    field.bounds.y = Math.max(0, Math.round(state.dragOrigBounds.y + dy));
+                    renderFieldOverlays();
+                    // Update editor if this field is selected
+                    if (state.selectedFieldIndex === state.dragFieldIndex) {
+                        document.getElementById('boundsX').value = field.bounds.x;
+                        document.getElementById('boundsY').value = field.bounds.y;
+                    }
+                } else if (state.isDrawing) {
                     renderSelectionRect(x, y);
                 }
             });
-            
+
             overlay.addEventListener('mouseup', (e) => {
+                if (state.isDragging) {
+                    state.isDragging = false;
+                    state.dragFieldIndex = -1;
+                    state.dragStart = null;
+                    state.dragOrigBounds = null;
+                    return;
+                }
+
                 if (!state.isDrawing) return;
-                
+
                 const rect = overlay.getBoundingClientRect();
                 const endX = (e.clientX - rect.left) / state.zoom;
                 const endY = (e.clientY - rect.top) / state.zoom;
-                
+
                 const bounds = {
                     x: Math.round(Math.min(state.drawStart.x, endX)),
                     y: Math.round(Math.min(state.drawStart.y, endY)),
                     width: Math.round(Math.abs(endX - state.drawStart.x)),
                     height: Math.round(Math.abs(endY - state.drawStart.y))
                 };
-                
+
                 state.isDrawing = false;
                 state.drawStart = null;
                 clearSelectionRect();
-                
-                // Only create field if area is meaningful
+
+                // Only accept if area is meaningful
                 if (bounds.width > 5 && bounds.height > 5) {
-                    addFieldWithBounds(bounds);
+                    if (state.redrawingFieldIndex >= 0) {
+                        // Redraw mode: update existing field's bounds
+                        state.fields[state.redrawingFieldIndex].bounds = bounds;
+                        state.selectedFieldIndex = state.redrawingFieldIndex;
+                        state.redrawingFieldIndex = -1;
+                        renderFieldList();
+                        renderFieldOverlays();
+                        showFieldEditor();
+                        populateFieldEditor(state.fields[state.selectedFieldIndex]);
+                    } else {
+                        addFieldWithBounds(bounds);
+                    }
+                } else {
+                    state.redrawingFieldIndex = -1;
                 }
             });
-            
+
             overlay.addEventListener('mouseleave', () => {
                 if (state.isDrawing) {
                     state.isDrawing = false;
                     state.drawStart = null;
                     clearSelectionRect();
                 }
+                if (state.isDragging) {
+                    state.isDragging = false;
+                    state.dragFieldIndex = -1;
+                    state.dragStart = null;
+                    state.dragOrigBounds = null;
+                }
             });
+        }
+
+        function hitTestField(imgX, imgY) {
+            // Return index of field under cursor, or -1
+            for (let i = state.fields.length - 1; i >= 0; i--) {
+                const b = state.fields[i].bounds;
+                if (imgX >= b.x && imgX <= b.x + b.width &&
+                    imgY >= b.y && imgY <= b.y + b.height) {
+                    return i;
+                }
+            }
+            return -1;
         }
         
         function renderSelectionRect(currentX, currentY) {
@@ -1062,9 +1186,17 @@
                 bounds: bounds,
                 style: {
                     color: '#000000',
+                    font_family: 'default',
                     font_size: 12,
                     alignment: 'left',
-                    bold: false
+                    bold: false,
+                    text_rows: 3,
+                    mark_type: 'x',
+                    line_width: 2,
+                    dot_radius: 3,
+                    connect_points: true,
+                    show_dots: true,
+                    padding: { top: 0, right: 0, bottom: 0, left: 0 }
                 },
                 x_axis: { min: 0, max: 120, increment: 5 },
                 y_axis: { min: 0, max: 200, increment: 20 }
@@ -1094,7 +1226,7 @@
         
         function deleteField() {
             if (state.selectedFieldIndex < 0) return;
-            
+
             if (confirm('Delete this field?')) {
                 state.fields.splice(state.selectedFieldIndex, 1);
                 state.selectedFieldIndex = -1;
@@ -1102,6 +1234,28 @@
                 renderFieldOverlays();
                 hideFieldEditor();
             }
+        }
+
+        function deleteFieldByIndex(index) {
+            if (index < 0 || index >= state.fields.length) return;
+            const fieldId = state.fields[index].id;
+            if (confirm(`Delete field "${fieldId}"?`)) {
+                state.fields.splice(index, 1);
+                if (state.selectedFieldIndex === index) {
+                    state.selectedFieldIndex = -1;
+                    hideFieldEditor();
+                } else if (state.selectedFieldIndex > index) {
+                    state.selectedFieldIndex--;
+                }
+                renderFieldList();
+                renderFieldOverlays();
+            }
+        }
+
+        function redrawField() {
+            if (state.selectedFieldIndex < 0) return;
+            state.redrawingFieldIndex = state.selectedFieldIndex;
+            alert('Draw a new rectangle on the form to reposition this field. All other settings will be preserved.');
         }
         
         function renderFieldList() {
@@ -1127,7 +1281,8 @@
                         <div class="field-item-type">${field.type}${field.mandatory ? ' • Required' : ''}</div>
                     </div>
                     <div class="field-item-actions">
-                        <button class="btn btn-sm btn-outline" onclick="event.stopPropagation(); duplicateField(${index})">📋</button>
+                        <button class="btn btn-sm btn-outline" onclick="event.stopPropagation(); duplicateField(${index})" title="Duplicate">📋</button>
+                        <button class="btn btn-sm btn-outline" style="color: var(--danger);" onclick="event.stopPropagation(); deleteFieldByIndex(${index})" title="Delete">✕</button>
                     </div>
                 </li>
             `).join('');
@@ -1167,9 +1322,7 @@
                 label.textContent = field.id;
                 label.style.backgroundColor = field.style.color;
                 rect.appendChild(label);
-                
-                rect.addEventListener('click', () => selectField(index));
-                
+
                 overlay.appendChild(rect);
             });
         }
@@ -1193,22 +1346,32 @@
             document.getElementById('fieldDescription').value = field.description || '';
             document.getElementById('fieldType').value = field.type;
             document.getElementById('fieldMandatory').checked = field.mandatory;
-            
+
             document.getElementById('boundsX').value = field.bounds.x;
             document.getElementById('boundsY').value = field.bounds.y;
             document.getElementById('boundsWidth').value = field.bounds.width;
             document.getElementById('boundsHeight').value = field.bounds.height;
-            
+
             document.getElementById('styleColor').value = field.style.color;
             document.getElementById('styleColorHex').value = field.style.color;
+            document.getElementById('styleFontFamily').value = field.style.font_family || 'default';
             document.getElementById('styleFontSize').value = field.style.font_size || 12;
             document.getElementById('styleAlignment').value = field.style.alignment || 'left';
             document.getElementById('styleBold').checked = field.style.bold || false;
-            
+
+            // Multiline text options
+            document.getElementById('textRows').value = field.style.text_rows || 3;
+
             // Checkbox options
             document.getElementById('checkboxMarkType').value = field.style.mark_type || 'x';
-            document.getElementById('checkboxSize').value = field.style.size || 10;
-            
+
+            // Padding
+            const padding = field.style.padding || {};
+            document.getElementById('paddingTop').value = padding.top || 0;
+            document.getElementById('paddingRight').value = padding.right || 0;
+            document.getElementById('paddingBottom').value = padding.bottom || 0;
+            document.getElementById('paddingLeft').value = padding.left || 0;
+
             // Graph options
             document.getElementById('xAxisMin').value = field.x_axis?.min ?? 0;
             document.getElementById('xAxisMax').value = field.x_axis?.max ?? 120;
@@ -1220,18 +1383,24 @@
             document.getElementById('dotRadius').value = field.style.dot_radius || 3;
             document.getElementById('connectPoints').checked = field.style.connect_points !== false;
             document.getElementById('showDots').checked = field.style.show_dots !== false;
-            
+
             onFieldTypeChange();
         }
         
         function onFieldTypeChange() {
             const type = document.getElementById('fieldType').value;
-            
-            document.getElementById('textOptions').style.display = type === 'text' ? 'block' : 'none';
+            const isText = type === 'text' || type === 'multiline_text';
+
+            document.getElementById('textOptions').style.display = isText ? 'block' : 'none';
+            document.getElementById('multilineOptions').style.display = type === 'multiline_text' ? 'block' : 'none';
             document.getElementById('checkboxOptions').style.display = type === 'checkbox' ? 'block' : 'none';
-            document.getElementById('graphOptions').style.display = 
+            document.getElementById('graphOptions').style.display =
                 ['line_graph', 'bar_graph', 'dot_series', 'bp_ladder'].includes(type) ? 'block' : 'none';
-            
+
+            // Hide font size for multiline (auto-calculated from row height)
+            document.getElementById('styleFontSize').closest('.form-group').style.display =
+                type === 'multiline_text' ? 'none' : '';
+
             updateCurrentField();
         }
         
@@ -1256,8 +1425,10 @@
             const inputs = [
                 'fieldId', 'fieldDescription', 'fieldType', 'fieldMandatory',
                 'boundsX', 'boundsY', 'boundsWidth', 'boundsHeight',
-                'styleFontSize', 'styleAlignment', 'styleBold',
-                'checkboxMarkType', 'checkboxSize',
+                'styleFontFamily', 'styleFontSize', 'styleAlignment', 'styleBold',
+                'textRows',
+                'checkboxMarkType',
+                'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
                 'xAxisMin', 'xAxisMax', 'xAxisIncrement',
                 'yAxisMin', 'yAxisMax', 'yAxisIncrement',
                 'lineWidth', 'dotRadius', 'connectPoints', 'showDots'
@@ -1274,46 +1445,53 @@
         
         function updateCurrentField() {
             if (state.selectedFieldIndex < 0) return;
-            
+
             const field = state.fields[state.selectedFieldIndex];
-            
+
             field.id = document.getElementById('fieldId').value;
             field.description = document.getElementById('fieldDescription').value;
             field.type = document.getElementById('fieldType').value;
             field.mandatory = document.getElementById('fieldMandatory').checked;
-            
+
             field.bounds = {
                 x: parseInt(document.getElementById('boundsX').value) || 0,
                 y: parseInt(document.getElementById('boundsY').value) || 0,
                 width: parseInt(document.getElementById('boundsWidth').value) || 100,
                 height: parseInt(document.getElementById('boundsHeight').value) || 20
             };
-            
+
             field.style = {
                 color: document.getElementById('styleColor').value,
+                font_family: document.getElementById('styleFontFamily').value,
                 font_size: parseInt(document.getElementById('styleFontSize').value) || 12,
                 alignment: document.getElementById('styleAlignment').value,
                 bold: document.getElementById('styleBold').checked,
+                text_rows: parseInt(document.getElementById('textRows').value) || 3,
                 mark_type: document.getElementById('checkboxMarkType').value,
-                size: parseInt(document.getElementById('checkboxSize').value) || 10,
                 line_width: parseInt(document.getElementById('lineWidth').value) || 2,
                 dot_radius: parseInt(document.getElementById('dotRadius').value) || 3,
                 connect_points: document.getElementById('connectPoints').checked,
-                show_dots: document.getElementById('showDots').checked
+                show_dots: document.getElementById('showDots').checked,
+                padding: {
+                    top: parseInt(document.getElementById('paddingTop').value) || 0,
+                    right: parseInt(document.getElementById('paddingRight').value) || 0,
+                    bottom: parseInt(document.getElementById('paddingBottom').value) || 0,
+                    left: parseInt(document.getElementById('paddingLeft').value) || 0
+                }
             };
-            
+
             field.x_axis = {
                 min: parseFloat(document.getElementById('xAxisMin').value) || 0,
                 max: parseFloat(document.getElementById('xAxisMax').value) || 120,
                 increment: parseFloat(document.getElementById('xAxisIncrement').value) || 5
             };
-            
+
             field.y_axis = {
                 min: parseFloat(document.getElementById('yAxisMin').value) || 0,
                 max: parseFloat(document.getElementById('yAxisMax').value) || 200,
                 increment: parseFloat(document.getElementById('yAxisIncrement').value) || 20
             };
-            
+
             renderFieldList();
             renderFieldOverlays();
         }
@@ -1341,6 +1519,9 @@
                 switch (field.type) {
                     case 'text':
                         testData[field.id] = `Sample ${field.id}`;
+                        break;
+                    case 'multiline_text':
+                        testData[field.id] = `This is sample multiline text for ${field.id}. It will wrap across multiple lines within the defined field bounds.`;
                         break;
                     case 'checkbox':
                         testData[field.id] = true;
@@ -1454,27 +1635,30 @@
             try {
                 const response = await fetch(`/api/preset/${filename}`);
                 const preset = await response.json();
-                
+
+                // Clear existing fields first (bypass the prompt since we're loading a preset)
+                state.fields = [];
+                state.selectedFieldIndex = -1;
+
                 // Set form image
                 if (preset.form_image) {
                     document.getElementById('formSelect').value = preset.form_image;
                     loadFormImage();
                 }
-                
+
                 // Set name
                 document.getElementById('presetName').value = preset.form_name || '';
-                
-                // Load fields
+
+                // Load fields from preset
                 state.fields = preset.fields || [];
-                state.selectedFieldIndex = -1;
-                
+
                 renderFieldList();
                 hideFieldEditor();
                 closeLoadPresetModal();
-                
+
                 // Wait for image to load before rendering overlays
                 setTimeout(renderFieldOverlays, 100);
-                
+
             } catch (error) {
                 console.error('Failed to load preset:', error);
                 alert('Failed to load preset');

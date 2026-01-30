@@ -45,10 +45,22 @@ Navigate to: **http://localhost:5000**
 **Method A - Draw on Form:**
 - Click and drag on the form image to draw a field rectangle
 - A new field is automatically created with those bounds
+- Hold **Shift** while clicking to force drawing mode (skip drag detection)
 
 **Method B - Add Field Button:**
 - Click "+ Add Field" to create a new field
 - Manually enter the pixel coordinates in the Properties panel
+
+**Moving Fields:**
+- Click and drag an existing field overlay to reposition it
+- Or click "Redraw" in the Properties panel to draw a new rectangle keeping all settings
+
+**Deleting Fields:**
+- Click the **X** button on any field in the list to delete it inline
+- Or select a field and click "Delete Field" in the Properties panel
+
+**Switching Forms:**
+- When loading a new form image, you'll be prompted to clear existing fields
 
 ### Step 3: Configure Field Properties
 
@@ -58,16 +70,25 @@ For each field, configure:
 |----------|-------------|
 | **Field ID** | Unique identifier used in JSON data (e.g., `patient_name`) |
 | **Description** | Human-readable description |
-| **Type** | text, checkbox, line_graph, bar_graph, dot_series, bp_ladder |
+| **Type** | text, multiline_text, checkbox, line_graph, bar_graph, dot_series, bp_ladder |
 | **Mandatory** | Whether this field must have data |
 
 #### Field Types
 
-**Text** - Simple text annotation
+**Text** - Single-line text annotation
+- Font family (default, handwriting-casual, handwriting-elegant, handwriting-print)
 - Font size, color, alignment, bold
+- Padding (top, right, bottom, left)
+
+**Multiline Text** - Word-wrapped text within defined bounds
+- Font family, color, alignment, bold
+- **Text Rows**: number of rows; font size auto-calculated from row height
+- Padding (top, right, bottom, left)
 
 **Checkbox** - Tick/cross mark
-- Mark type (X, checkmark, fill), size
+- Mark type (X, checkmark, fill)
+- Mark fills the drawn field bounds (width x height)
+- Padding (top, right, bottom, left)
 
 **Line Graph** - Connected data points (e.g., heart rate trace)
 - X axis: time range and increments
@@ -187,8 +208,16 @@ The test data JSON should have field IDs as keys:
 ```
 form_mapper/
 ├── app.py                 # Flask backend
+├── document_generator.py  # Production document renderer
 ├── templates/
 │   └── index.html         # Web interface
+├── fonts/
+│   └── handwriting/       # Bundled handwriting fonts (OFL licensed)
+│       ├── Caveat-Regular.ttf
+│       ├── Caveat-Bold.ttf
+│       ├── DancingScript-Regular.ttf
+│       ├── DancingScript-Bold.ttf
+│       └── PatrickHand-Regular.ttf
 ├── form_images/           # Form template images
 │   ├── QADDS_Adult_Page_1.jpg
 │   ├── Medication_Chart_Page_1.jpg
@@ -220,9 +249,16 @@ form_mapper/
 3. Height should accommodate font size (typically font_size + 4)
 
 ### For Checkbox Fields
-1. Target the checkbox square, not the label
-2. Size should match the checkbox dimensions
-3. Use appropriate mark type for the form style
+1. Draw the rectangle to match the checkbox square on the form
+2. The check/cross mark will fill the drawn bounds automatically
+3. Use padding to inset the mark within the drawn area
+4. Use appropriate mark type for the form style
+
+### Font Families
+Three handwriting fonts are bundled for realistic form fills:
+- **Handwriting - Casual (Caveat)**: relaxed handwriting style
+- **Handwriting - Elegant (Dancing Script)**: flowing cursive
+- **Handwriting - Print (Patrick Hand)**: neat printed handwriting
 
 ## Workflow for New Forms
 

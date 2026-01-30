@@ -72,13 +72,54 @@ def hex_to_rgba(hex_color: str, alpha: int = 255) -> tuple:
     return (0, 0, 0, alpha)
 
 
-def get_font(size: int = 12, bold: bool = False) -> ImageFont.FreeTypeFont:
-    """Get a font of the specified size."""
-    font_paths = [
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-        "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
-    ]
+FONTS_DIR = BASE_DIR / "fonts" / "handwriting"
+
+FONT_FAMILIES = {
+    'default': {
+        'regular': [
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+            "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+            "C:/Windows/Fonts/arial.ttf",
+            "/System/Library/Fonts/Helvetica.ttc",
+        ],
+        'bold': [
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+            "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+            "C:/Windows/Fonts/arialbd.ttf",
+            "/System/Library/Fonts/Helvetica.ttc",
+        ],
+    },
+    'handwriting-casual': {
+        'regular': [str(FONTS_DIR / "Caveat-Regular.ttf")],
+        'bold': [str(FONTS_DIR / "Caveat-Bold.ttf"), str(FONTS_DIR / "Caveat-Regular.ttf")],
+    },
+    'handwriting-elegant': {
+        'regular': [str(FONTS_DIR / "DancingScript-Regular.ttf")],
+        'bold': [str(FONTS_DIR / "DancingScript-Bold.ttf"), str(FONTS_DIR / "DancingScript-Regular.ttf")],
+    },
+    'handwriting-print': {
+        'regular': [str(FONTS_DIR / "PatrickHand-Regular.ttf")],
+        'bold': [str(FONTS_DIR / "PatrickHand-Regular.ttf")],
+    },
+}
+
+
+def get_font(size: int = 12, bold: bool = False, font_family: str = 'default') -> ImageFont.FreeTypeFont:
+    """Get a font of the specified size and family."""
+    family = FONT_FAMILIES.get(font_family, FONT_FAMILIES['default'])
+    variant = 'bold' if bold else 'regular'
+    font_paths = family.get(variant, family.get('regular', []))
+    # Fallback to default family if none found
+    if not font_paths:
+        font_paths = FONT_FAMILIES['default'].get(variant, [])
     for path in font_paths:
+        if os.path.exists(path):
+            try:
+                return ImageFont.truetype(path, size)
+            except Exception:
+                continue
+    # Final fallback to any default font
+    for path in FONT_FAMILIES['default']['regular']:
         if os.path.exists(path):
             try:
                 return ImageFont.truetype(path, size)
@@ -174,10 +215,13 @@ def render_field(draw: ImageDraw.ImageDraw, field: Dict, data: Any,
     
     if field_type == 'text':
         render_text_field(draw, field, data, style)
-    
+
+    elif field_type == 'multiline_text':
+        render_multiline_text_field(draw, field, data, style)
+
     elif field_type == 'checkbox':
         render_checkbox_field(draw, field, data, style)
-    
+
     elif field_type == 'line_graph':
         render_line_graph(draw, field, data, style)
     
@@ -194,49 +238,124 @@ def render_field(draw: ImageDraw.ImageDraw, field: Dict, data: Any,
 def render_text_field(draw: ImageDraw.ImageDraw, field: Dict, data: Any, style: Dict) -> None:
     """Render a text field."""
     bounds = field.get('bounds', {})
-    x = bounds.get('x', 0)
-    y = bounds.get('y', 0)
-    
+    padding = style.get('padding', {})
+    pad_top = padding.get('top', 0)
+    pad_right = padding.get('right', 0)
+    pad_left = padding.get('left', 0)
+
+    x = bounds.get('x', 0) + pad_left
+    y = bounds.get('y', 0) + pad_top
+    available_width = bounds.get('width', 100) - pad_left - pad_right
+
     font_size = style.get('font_size', 12)
     font_color = hex_to_rgba(style.get('color', '#000000'))
-    font = get_font(font_size, style.get('bold', False))
-    
+    font_family = style.get('font_family', 'default')
+    font = get_font(font_size, style.get('bold', False), font_family)
+
     text = str(data) if data is not None else ''
-    
+
     # Handle alignment
     alignment = style.get('alignment', 'left')
     if alignment == 'center':
         bbox = draw.textbbox((0, 0), text, font=font)
         text_width = bbox[2] - bbox[0]
-        field_width = bounds.get('width', text_width)
-        x = x + (field_width - text_width) // 2
+        x = x + (available_width - text_width) // 2
     elif alignment == 'right':
         bbox = draw.textbbox((0, 0), text, font=font)
         text_width = bbox[2] - bbox[0]
-        field_width = bounds.get('width', text_width)
-        x = x + field_width - text_width
-    
+        x = x + available_width - text_width
+
     draw.text((x, y), text, font=font, fill=font_color)
 
 
 def render_checkbox_field(draw: ImageDraw.ImageDraw, field: Dict, data: Any, style: Dict) -> None:
-    """Render a checkbox field."""
+    """Render a checkbox field. Mark fills the defined field bounds."""
     bounds = field.get('bounds', {})
-    x = bounds.get('x', 0)
-    y = bounds.get('y', 0)
-    size = style.get('size', 10)
+    padding = style.get('padding', {})
+    pad_top = padding.get('top', 0)
+    pad_right = padding.get('right', 0)
+    pad_bottom = padding.get('bottom', 0)
+    pad_left = padding.get('left', 0)
+
+    x = bounds.get('x', 0) + pad_left
+    y = bounds.get('y', 0) + pad_top
+    w = bounds.get('width', 20) - pad_left - pad_right
+    h = bounds.get('height', 20) - pad_top - pad_bottom
     color = hex_to_rgba(style.get('color', '#000000'))
-    
+    line_w = max(1, min(w, h) // 6)
+
     if data:  # Checkbox is checked
         mark_type = style.get('mark_type', 'x')
         if mark_type == 'x':
-            draw.line([x, y, x + size, y + size], fill=color, width=2)
-            draw.line([x, y + size, x + size, y], fill=color, width=2)
+            draw.line([x, y, x + w, y + h], fill=color, width=line_w)
+            draw.line([x, y + h, x + w, y], fill=color, width=line_w)
         elif mark_type == 'check':
-            draw.line([x, y + size * 0.5, x + size * 0.3, y + size], fill=color, width=2)
-            draw.line([x + size * 0.3, y + size, x + size, y], fill=color, width=2)
+            draw.line([x, y + h * 0.5, x + w * 0.3, y + h], fill=color, width=line_w)
+            draw.line([x + w * 0.3, y + h, x + w, y], fill=color, width=line_w)
         elif mark_type == 'fill':
-            draw.rectangle([x, y, x + size, y + size], fill=color)
+            draw.rectangle([x, y, x + w, y + h], fill=color)
+
+
+def render_multiline_text_field(draw: ImageDraw.ImageDraw, field: Dict, data: Any, style: Dict) -> None:
+    """Render a multiline text field. Text rows determine row height from bounds."""
+    bounds = field.get('bounds', {})
+    padding = style.get('padding', {})
+    pad_top = padding.get('top', 0)
+    pad_right = padding.get('right', 0)
+    pad_bottom = padding.get('bottom', 0)
+    pad_left = padding.get('left', 0)
+
+    x = bounds.get('x', 0) + pad_left
+    y = bounds.get('y', 0) + pad_top
+    available_width = bounds.get('width', 200) - pad_left - pad_right
+    available_height = bounds.get('height', 60) - pad_top - pad_bottom
+    text_rows = style.get('text_rows', 3)
+
+    row_height = available_height / max(text_rows, 1)
+    font_size = int(row_height * 0.8)
+    font_size = max(6, min(font_size, 72))
+
+    font_color = hex_to_rgba(style.get('color', '#000000'))
+    font_family = style.get('font_family', 'default')
+    font = get_font(font_size, style.get('bold', False), font_family)
+    alignment = style.get('alignment', 'left')
+
+    text = str(data) if data is not None else ''
+
+    # Word-wrap text into lines that fit available_width
+    words = text.split()
+    lines = []
+    current_line = ''
+    for word in words:
+        test_line = f"{current_line} {word}".strip() if current_line else word
+        bbox = draw.textbbox((0, 0), test_line, font=font)
+        if bbox[2] - bbox[0] <= available_width:
+            current_line = test_line
+        else:
+            if current_line:
+                lines.append(current_line)
+            current_line = word
+    if current_line:
+        lines.append(current_line)
+
+    # Truncate to available rows
+    lines = lines[:text_rows]
+
+    # Render each line
+    for i, line in enumerate(lines):
+        line_x = x
+        line_y = y + i * row_height
+
+        if alignment == 'center':
+            bbox = draw.textbbox((0, 0), line, font=font)
+            text_width = bbox[2] - bbox[0]
+            line_x = x + (available_width - text_width) // 2
+        elif alignment == 'right':
+            bbox = draw.textbbox((0, 0), line, font=font)
+            text_width = bbox[2] - bbox[0]
+            line_x = x + available_width - text_width
+
+        draw.text((line_x, line_y), line, font=font, fill=font_color)
 
 
 def render_line_graph(draw: ImageDraw.ImageDraw, field: Dict, data: List[Dict], style: Dict) -> None:

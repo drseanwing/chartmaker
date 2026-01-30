@@ -16,6 +16,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY app.py document_generator.py ./
 COPY templates/ templates/
+COPY fonts/ fonts/
 
 # Copy default data (named volumes inherit these on first run)
 COPY form_images/ form_images/
